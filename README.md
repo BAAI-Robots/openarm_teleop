@@ -23,6 +23,8 @@ All participation in the OpenArm project is governed by our [Code of Conduct](CO
 
 ## Can Bus Setup
 
+
+``` bash
 sudo ip link set can0 down
 # configure CAN 2.0 with 1mbps
 sudo ip link set can0 type can bitrate 1000000
@@ -33,3 +35,4 @@ sudo ip link set can1 down
 # configure CAN 2.0 with 1mbps
 sudo ip link set can1 type can bitrate 1000000
 sudo ip link set can1 up
+```
