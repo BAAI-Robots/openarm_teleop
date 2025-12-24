@@ -49,7 +49,7 @@ fi
 LEADER_URDF_PATH="$TMPDIR/${ARM_TYPE}_leader.urdf"
 FOLLOWER_URDF_PATH="$TMPDIR/${ARM_TYPE}_follower.urdf"
 XACRO_FILE="$ARM_TYPE.urdf.xacro"
-WS_DIR=~/openarm_ros2_ws
+WS_DIR=~/ros2_ws
 XACRO_PATH="$WS_DIR/src/openarm_description/urdf/robot/$XACRO_FILE"
 BIN_PATH=~/openarm_teleop/build/unilateral_control
 
