@@ -24,6 +24,7 @@
 #include <openarm_port/openarm_init.hpp>
 #include <periodic_timer_thread.hpp>
 #include <robot_state.hpp>
+#include <ros2_publisher.hpp>
 #include <thread>
 #include <yamlloader.hpp>
 
@@ -39,8 +40,15 @@ void signal_handler(int signal) {
 class LeaderArmThread : public PeriodicTimerThread {
 public:
     LeaderArmThread(std::shared_ptr<RobotSystemState> robot_state, Control *control_l,
+                    Dynamics *dynamics_l,
+                    std::shared_ptr<openarm::ros2::RobotStatePublisher> ros2_pub,
                     double hz = 500.0)
-        : PeriodicTimerThread(hz), robot_state_(robot_state), control_l_(control_l) {}
+        : PeriodicTimerThread(hz),
+          robot_state_(robot_state),
+          control_l_(control_l),
+          dynamics_l_(dynamics_l),
+          ros2_pub_(ros2_pub),
+          publish_counter_(0) {}
 
 protected:
     void before_start() override { std::cout << "leader start thread " << std::endl; }
@@ -51,6 +59,33 @@ protected:
         static auto prev_time = std::chrono::steady_clock::now();
 
         control_l_->unilateral_step();
+
+        // 每10次发布一次ROS2消息（减少发布频率到50Hz）
+        publish_counter_++;
+        if (publish_counter_ >= 10 && ros2_pub_) {
+            publish_counter_ = 0;
+
+            // 发布关节状态
+            std::vector<std::string> arm_joint_names = {"joint1", "joint2", "joint3",
+                                                        "joint4", "joint5", "joint6"};
+            std::vector<std::string> hand_joint_names = {"gripper_joint"};
+            ros2_pub_->publish_joint_states(robot_state_, arm_joint_names, hand_joint_names);
+
+            // 获取末端执行器位姿并发布
+            auto arm_responses = robot_state_->arm_state().get_all_responses();
+            std::vector<double> joint_positions(arm_responses.size());
+            for (size_t i = 0; i < arm_responses.size(); ++i) {
+                joint_positions[i] = arm_responses[i].position;
+            }
+
+            Eigen::Matrix3d ee_rotation;
+            Eigen::Vector3d ee_position;
+            dynamics_l_->GetEECordinate(joint_positions.data(), ee_rotation, ee_position);
+            ros2_pub_->publish_ee_pose(ee_position, ee_rotation);
+
+            // 处理ROS2回调
+            ros2_pub_->spin_some();
+        }
 
         auto now = std::chrono::steady_clock::now();
 
@@ -64,13 +99,23 @@ protected:
 private:
     std::shared_ptr<RobotSystemState> robot_state_;
     Control *control_l_;
+    Dynamics *dynamics_l_;
+    std::shared_ptr<openarm::ros2::RobotStatePublisher> ros2_pub_;
+    int publish_counter_;
 };
 
 class FollowerArmThread : public PeriodicTimerThread {
 public:
     FollowerArmThread(std::shared_ptr<RobotSystemState> robot_state, Control *control_f,
+                      Dynamics *dynamics_f,
+                      std::shared_ptr<openarm::ros2::RobotStatePublisher> ros2_pub,
                       double hz = 500.0)
-        : PeriodicTimerThread(hz), robot_state_(robot_state), control_f_(control_f) {}
+        : PeriodicTimerThread(hz),
+          robot_state_(robot_state),
+          control_f_(control_f),
+          dynamics_f_(dynamics_f),
+          ros2_pub_(ros2_pub),
+          publish_counter_(0) {}
 
 protected:
     void before_start() override { std::cout << "follower start thread " << std::endl; }
@@ -81,6 +126,33 @@ protected:
         static auto prev_time = std::chrono::steady_clock::now();
 
         control_f_->unilateral_step();
+
+        // 每10次发布一次ROS2消息（减少发布频率到50Hz）
+        publish_counter_++;
+        if (publish_counter_ >= 10 && ros2_pub_) {
+            publish_counter_ = 0;
+
+            // 发布关节状态
+            std::vector<std::string> arm_joint_names = {"joint1", "joint2", "joint3",
+                                                        "joint4", "joint5", "joint6"};
+            std::vector<std::string> hand_joint_names = {"gripper_joint"};
+            ros2_pub_->publish_joint_states(robot_state_, arm_joint_names, hand_joint_names);
+
+            // 获取末端执行器位姿并发布
+            auto arm_responses = robot_state_->arm_state().get_all_responses();
+            std::vector<double> joint_positions(arm_responses.size());
+            for (size_t i = 0; i < arm_responses.size(); ++i) {
+                joint_positions[i] = arm_responses[i].position;
+            }
+
+            Eigen::Matrix3d ee_rotation;
+            Eigen::Vector3d ee_position;
+            dynamics_f_->GetEECordinate(joint_positions.data(), ee_rotation, ee_position);
+            ros2_pub_->publish_ee_pose(ee_position, ee_rotation);
+
+            // 处理ROS2回调
+            ros2_pub_->spin_some();
+        }
 
         auto now = std::chrono::steady_clock::now();
 
@@ -94,6 +166,9 @@ protected:
 private:
     std::shared_ptr<RobotSystemState> robot_state_;
     Control *control_f_;
+    Dynamics *dynamics_f_;
+    std::shared_ptr<openarm::ros2::RobotStatePublisher> ros2_pub_;
+    int publish_counter_;
 };
 
 class AdminThread : public PeriodicTimerThread {
@@ -271,6 +346,25 @@ int main(int argc, char **argv) {
         control_follower->SetParameter(follower_kp, follower_kd, follower_Fc, follower_k,
                                        follower_Fv, follower_Fo);
 
+        // 初始化ROS2发布器
+        std::shared_ptr<openarm::ros2::RobotStatePublisher> leader_ros2_pub =
+            std::make_shared<openarm::ros2::RobotStatePublisher>("leader_node", "leader");
+        std::shared_ptr<openarm::ros2::RobotStatePublisher> follower_ros2_pub =
+            std::make_shared<openarm::ros2::RobotStatePublisher>("follower_node", "follower");
+
+        // 初始化ROS2（只初始化一次）
+        if (!leader_ros2_pub->init(argc, argv)) {
+            std::cerr << "Failed to initialize ROS2 for leader!" << std::endl;
+        } else {
+            std::cout << "ROS2 publisher initialized for leader" << std::endl;
+        }
+
+        if (!follower_ros2_pub->init(argc, argv)) {
+            std::cerr << "Failed to initialize ROS2 for follower!" << std::endl;
+        } else {
+            std::cout << "ROS2 publisher initialized for follower" << std::endl;
+        }
+
         // set home postion
         std::thread thread_l(&Control::AdjustPosition, control_leader);
         std::thread thread_f(&Control::AdjustPosition, control_follower);
@@ -278,8 +372,10 @@ int main(int argc, char **argv) {
         thread_f.join();
 
         // Start control process
-        LeaderArmThread leader_thread(leader_state, control_leader, FREQUENCY);
-        FollowerArmThread follower_thread(follower_state, control_follower, FREQUENCY);
+        LeaderArmThread leader_thread(leader_state, control_leader, leader_arm_dynamics,
+                                      leader_ros2_pub, FREQUENCY);
+        FollowerArmThread follower_thread(follower_state, control_follower, follower_arm_dynamics,
+                                          follower_ros2_pub, FREQUENCY);
         AdminThread admin_thread(leader_state, follower_state, control_leader, control_follower,
                                  FREQUENCY);
 

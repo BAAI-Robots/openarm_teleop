@@ -35,6 +35,13 @@ find_package(urdfdom_headers REQUIRED)
 find_package(yaml-cpp REQUIRED)
 find_package(Threads REQUIRED)
 
+# ROS2 packages
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+
 if(NOT TARGET yaml-cpp::yaml-cpp AND TARGET yaml-cpp)
   add_library(yaml-cpp::yaml-cpp ALIAS yaml-cpp)
 endif()
@@ -45,7 +52,8 @@ endif()
 add_library(
   openarm_teleop_lib STATIC
   src/controller/dynamics.cpp src/controller/control.cpp
-  src/openarm_port/openarm_init.cpp src/openarm_port/joint_mapper.cpp)
+  src/openarm_port/openarm_init.cpp src/openarm_port/joint_mapper.cpp
+  src/ros2_publisher.cpp)
 
 target_include_directories(openarm_teleop_lib
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -55,7 +63,13 @@ target_include_directories(openarm_teleop_lib
 target_link_libraries(
   openarm_teleop_lib
   PUBLIC OpenArmCAN::openarm_can Eigen3::Eigen ${orocos_kdl_LIBRARIES}
-         ${kdl_parser_LIBRARIES} /opt/ros/humble/lib/libkdl_parser.so  urdfdom::urdfdom_model yaml-cpp::yaml-cpp)
+         ${kdl_parser_LIBRARIES} /opt/ros/humble/lib/libkdl_parser.so  
+         urdfdom::urdfdom_model yaml-cpp::yaml-cpp
+         rclcpp::rclcpp 
+         ${sensor_msgs_TARGETS}
+         ${geometry_msgs_TARGETS}
+         ${tf2_TARGETS}
+         ${tf2_geometry_msgs_TARGETS})
 
          
 # -----------------------------
