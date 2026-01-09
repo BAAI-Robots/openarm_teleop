@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <controller/dynamics.hpp>
+#include <controller/ik_solver.hpp>
 
 Dynamics::Dynamics(std::string urdf_path, std::string start_link, std::string end_link) {
     this->urdf_path = urdf_path;
@@ -226,4 +227,53 @@ void Dynamics::GetPreEECordinate(const double *motor_position, Eigen::Matrix3d &
         for (int j = 0; j < 3; ++j) R(i, j) = kdl_frame.M(i, j);
 
     p << kdl_frame.p[0], kdl_frame.p[1], kdl_frame.p[2];
+}
+
+bool Dynamics::InitIKSolver(bool use_lma) {
+    try {
+        IKSolver::SolverType type = use_lma ? IKSolver::KDL_LMA : IKSolver::KDL_NUMERICAL;
+        ik_solver_ = std::make_unique<IKSolver>(kdl_chain, type);
+        std::cout << "[Dynamics] IK Solver initialized successfully" << std::endl;
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[Dynamics] Failed to initialize IK solver: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool Dynamics::SolveIK(const Eigen::Vector3d& target_position,
+                       const Eigen::Matrix3d& target_orientation,
+                       const std::vector<double>& current_joint_angles,
+                       std::vector<double>& solution) {
+    if (!ik_solver_) {
+        std::cerr << "[Dynamics] IK solver not initialized! Call InitIKSolver() first." << std::endl;
+        return false;
+    }
+    
+    return ik_solver_->solve(target_position, target_orientation, 
+                             current_joint_angles, solution);
+}
+
+bool Dynamics::SolveIKQuaternion(const Eigen::Vector3d& target_position,
+                                 const Eigen::Quaterniond& target_quat,
+                                 const std::vector<double>& current_joint_angles,
+                                 std::vector<double>& solution) {
+    if (!ik_solver_) {
+        std::cerr << "[Dynamics] IK solver not initialized! Call InitIKSolver() first." << std::endl;
+        return false;
+    }
+    
+    return ik_solver_->solve_quaternion(target_position, target_quat, 
+                                        current_joint_angles, solution);
+}
+
+bool Dynamics::SolveIKPositionOnly(const Eigen::Vector3d& target_position,
+                                   const std::vector<double>& current_joint_angles,
+                                   std::vector<double>& solution) {
+    if (!ik_solver_) {
+        std::cerr << "[Dynamics] IK solver not initialized! Call InitIKSolver() first." << std::endl;
+        return false;
+    }
+    
+    return ik_solver_->solve_position_only(target_position, current_joint_angles, solution);
 }

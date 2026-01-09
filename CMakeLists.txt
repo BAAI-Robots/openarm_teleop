@@ -39,6 +39,7 @@ find_package(Threads REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 
@@ -52,8 +53,10 @@ endif()
 add_library(
   openarm_teleop_lib STATIC
   src/controller/dynamics.cpp src/controller/control.cpp
+  src/controller/ik_solver.cpp
   src/openarm_port/openarm_init.cpp src/openarm_port/joint_mapper.cpp
-  src/ros2_publisher.cpp)
+  src/ros2_publisher.cpp
+  src/vr_control_interface.cpp)
 
 target_include_directories(openarm_teleop_lib
                            PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src
@@ -68,6 +71,7 @@ target_link_libraries(
          rclcpp::rclcpp 
          ${sensor_msgs_TARGETS}
          ${geometry_msgs_TARGETS}
+         ${std_msgs_TARGETS}
          ${tf2_TARGETS}
          ${tf2_geometry_msgs_TARGETS})
 
@@ -79,6 +83,8 @@ add_executable(gravity_comp control/gravity_compasation.cpp)
 add_executable(comm_test control/openarm_communication_test.cpp)
 add_executable(unilateral_control control/openarm_unilateral_control.cpp)
 add_executable(bilateral_control control/openarm_bilateral_control.cpp)
+add_executable(vr_control_example control/vr_control_example.cpp)
+add_executable(ik_test control/ik_test.cpp)
 add_executable(test_demo test_demo.cpp)
 target_link_libraries(test_demo PRIVATE OpenArmCAN::openarm_can Threads::Threads)
 
@@ -86,6 +92,8 @@ target_link_libraries(gravity_comp PRIVATE openarm_teleop_lib)
 target_link_libraries(comm_test PRIVATE openarm_teleop_lib)
 target_link_libraries(unilateral_control PRIVATE openarm_teleop_lib)
 target_link_libraries(bilateral_control PRIVATE openarm_teleop_lib)
+target_link_libraries(vr_control_example PRIVATE openarm_teleop_lib)
+target_link_libraries(ik_test PRIVATE openarm_teleop_lib)
 # 链接 Threads::Threads
 
 target_link_libraries(gravity_comp PRIVATE openarm_teleop_lib Threads::Threads)
