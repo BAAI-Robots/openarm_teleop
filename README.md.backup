@@ -1,0 +1,490 @@
+# OpenArm Teleop
+
+OpenArm supports multiple control modes:
+- 🤝 1:1 teleoperation from a leader arm to a follower arm
+- 🎮 **VR control with ROS2 integration**
+- ⌨️ **Keyboard/Mouse control (Minecraft-style)**
+- 🤖 **Pure simulation mode (no hardware required)**
+- 🧠 **7-DOF Inverse kinematics** for end-effector pose control
+
+## 🎯 Robot Configuration
+
+**OpenArm v10 Follower**
+- **7 DOF**: 7 revolute joints (redundant arm)
+- **Kinematics**: KDL-based FK/IK solver
+- **IK Success Rate**: 80-90% (typical for 7-DOF arms)
+- **Dual Arm Support**: Left + Right arms (14 joints total)
+
+See [KINEMATICS_7DOF.md](KINEMATICS_7DOF.md) for详细的7自由度运动学说明。
+
+See the [documentation](https://docs.openarm.dev/teleop/) for traditional teleop details.
+
+---
+
+## 🚀 Quick Start
+
+### CAN Bus Setup
+
+First, configure the CAN interface:
+
+```bash
+sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 1000000
+sudo ip link set can0 up
+
+sudo ip link set can1 down
+sudo ip link set can1 type can bitrate 1000000
+sudo ip link set can1 up
+```
+
+### Build the Project
+
+```bash
+cd /home/robot/openarm_teleop
+mkdir -p build && cd build
+
+# Source ROS2 environment
+source /opt/ros/humble/setup.bash
+
+# Configure and build
+cmake ..
+make
+
+# Verify executables
+ls -lh vr_control_example ik_test
+```
+
+---
+
+## 🎮 VR Control Mode (ROS2)
+
+### 1. Generate URDF Files
+
+Before starting VR control, generate the robot URDF:
+
+```bash
+mkdir -p /tmp/openarm_urdf_gen
+xacro ~/ros2_ws/src/openarm_description/urdf/robot/v10.urdf.xacro \
+      bimanual:=true \
+      -o /tmp/openarm_urdf_gen/v10_leader.urdf
+```
+
+### 2. Start the VR Control Program
+
+**On the robot side:**
+
+```bash
+cd /home/robot/openarm_teleop/build
+
+# Option 1: Using default parameters (can0, right_arm)
+./vr_control_example
+
+# Option 2: Specify parameters
+./vr_control_example can0 /tmp/openarm_urdf_gen/v10_leader.urdf right_arm
+```
+
+**What it does:**
+- ✅ Initializes OpenArm hardware (CAN interface)
+- ✅ Initializes IK solver for end-effector control
+- ✅ Starts 500Hz control loop
+- ✅ Publishes robot state at 50Hz to ROS2 topics
+- ✅ Listens for VR commands on ROS2 topics
+
+**Expected output:**
+```
+=== OpenArm VR Control Example ===
+CAN Interface: can0
+[INFO] Initializing IK solver...
+[IKSolver] Using KDL LMA solver
+[Dynamics] IK Solver initialized successfully
+[INFO] Initializing OpenArm hardware...
+Arm motors: 6
+Hand motors: 1
+[INFO] Initializing ROS2 Publisher...
+[INFO] Initializing VR Control Interface...
+[VR Control] Thread started
+
+=== VR Control Active ===
+Waiting for VR commands on topics:
+  - /robot/joint_command
+  - /robot/ee_pose_command
+  - /robot/gripper_command
+
+Publishing robot state on:
+  - /robot/joint_states
+  - /robot/ee_pose
+
+Press Ctrl+C to exit...
+```
+
+---
+
+## 🎮 Keyboard Mouse Control (Minecraft Style)
+
+Control the robot using keyboard and mouse, similar to Minecraft!
+
+### Quick Start
+
+```bash
+# One-line launch (auto tmux multi-window)
+./launch_keyboard_control.sh
+
+# Or manual Python script
+python3 keyboard_mouse_control.py
+```
+
+### Controls
+
+| Key | Action |
+|-----|--------|
+| **W/S** | Forward/Backward |
+| **A/D** | Left/Right |
+| **Shift/Space** | Down/Up |
+| **Q/E** | Roll Left/Right |
+| **Mouse Move** | Pitch & Yaw |
+| **G** | Toggle Gripper |
+| **R** | Reset Pose |
+| **ESC** | Exit |
+
+### Launch Modes
+
+The script supports 4 launch modes:
+1. **Full Mode**: Robot + Keyboard Control + RViz (auto tmux)
+2. **Keyboard Only**: Control interface only
+3. **RViz Only**: Visualization only
+4. **Test Mode**: No real robot required
+
+**Dependencies:**
+```bash
+sudo apt install python3-pygame tmux
+pip3 install pygame
+```
+
+**See:** [QUICKSTART_VR.md](QUICKSTART_VR.md) for detailed keyboard control guide.
+
+---
+
+## 📡 VR端 ROS2 话题接口
+
+### VR端需要发布的话题（控制机器人）
+
+#### 1. 关节控制（直接控制）
+
+```bash
+# Topic: /robot/joint_command
+# Type: sensor_msgs/msg/JointState
+# Description: 直接设置关节角度
+
+ros2 topic pub /robot/joint_command sensor_msgs/msg/JointState '{
+  position: [0.0, 0.5, -0.3, 0.2, 0.1, -0.4, 0.0]
+}' --once
+```
+
+**Python示例：**
+```python
+import rclpy
+from sensor_msgs.msg import JointState
+
+# 创建发布器
+joint_pub = node.create_publisher(JointState, '/robot/joint_command', 10)
+
+# 发布关节命令
+msg = JointState()
+msg.position = [0.0, 0.5, -0.3, 0.2, 0.1, -0.4, 0.0]  # 6个手臂关节 + 1个夹爪
+joint_pub.publish(msg)
+```
+
+#### 2. 末端位姿控制（自动IK求解）✨
+
+```bash
+# Topic: /robot/ee_pose_command
+# Type: geometry_msgs/msg/PoseStamped
+# Description: 设置末端执行器位姿，系统自动求解IK
+
+ros2 topic pub /robot/ee_pose_command geometry_msgs/msg/PoseStamped '{
+  header: {frame_id: "world"},
+  pose: {
+    position: {x: 0.3, y: 0.2, z: 0.5},
+    orientation: {w: 1.0, x: 0.0, y: 0.0, z: 0.0}
+  }
+}' --once
+```
+
+**Python示例：**
+```python
+from geometry_msgs.msg import PoseStamped
+
+# 创建发布器
+pose_pub = node.create_publisher(PoseStamped, '/robot/ee_pose_command', 10)
+
+# 发布末端位姿命令
+msg = PoseStamped()
+msg.header.frame_id = 'world'
+msg.pose.position.x = 0.3
+msg.pose.position.y = 0.2
+msg.pose.position.z = 0.5
+msg.pose.orientation.w = 1.0  # 单位四元数
+pose_pub.publish(msg)
+
+# IK求解自动执行，无需VR端计算
+```
+
+#### 3. 夹爪控制
+
+```bash
+# Topic: /robot/gripper_command
+# Type: std_msgs/msg/Float64MultiArray
+# Description: 设置夹爪开合度
+
+ros2 topic pub /robot/gripper_command std_msgs/msg/Float64MultiArray '{
+  data: [0.5]
+}' --once
+```
+
+**Python示例：**
+```python
+from std_msgs.msg import Float64MultiArray
+
+gripper_pub = node.create_publisher(Float64MultiArray, '/robot/gripper_command', 10)
+
+msg = Float64MultiArray()
+msg.data = [0.5]  # 0.0 = 完全闭合, 1.0 = 完全打开
+gripper_pub.publish(msg)
+```
+
+---
+
+### VR端需要订阅的话题（获取机器人状态）
+
+#### 1. 关节状态反馈
+
+```bash
+# Topic: /robot/joint_states
+# Type: sensor_msgs/msg/JointState
+# Frequency: 50Hz
+
+ros2 topic echo /robot/joint_states
+```
+
+**Python示例：**
+```python
+from sensor_msgs.msg import JointState
+
+def joint_state_callback(msg):
+    print(f"Received {len(msg.position)} joint positions:")
+    for i, pos in enumerate(msg.position):
+        print(f"  Joint {i}: {pos:.3f} rad")
+
+joint_sub = node.create_subscription(
+    JointState, '/robot/joint_states', joint_state_callback, 10)
+```
+
+#### 2. 末端位姿反馈
+
+```bash
+# Topic: /robot/ee_pose
+# Type: geometry_msgs/msg/PoseStamped
+# Frequency: 50Hz
+
+ros2 topic echo /robot/ee_pose
+```
+
+**Python示例：**
+```python
+from geometry_msgs.msg import PoseStamped
+
+def ee_pose_callback(msg):
+    pos = msg.pose.position
+    ori = msg.pose.orientation
+    print(f"End-effector pose:")
+    print(f"  Position: [{pos.x:.3f}, {pos.y:.3f}, {pos.z:.3f}]")
+    print(f"  Orientation: [{ori.w:.3f}, {ori.x:.3f}, {ori.y:.3f}, {ori.z:.3f}]")
+
+ee_sub = node.create_subscription(
+    PoseStamped, '/robot/ee_pose', ee_pose_callback, 10)
+```
+
+---
+
+## 🧪 测试VR接口
+
+### 1. 测试IK求解器
+
+```bash
+cd /home/robot/openarm_teleop/build
+./ik_test
+```
+
+**预期输出：**
+```
+[✓] Test Case 1: Zero Configuration
+    Position error: 0.0000 m
+[✓] Test Case 2: Random Configuration
+    Position error: 0.0000 m
+```
+
+### 2. 自动化测试脚本
+
+```bash
+cd /home/robot/openarm_teleop
+chmod +x test_vr_interface.sh
+./test_vr_interface.sh
+```
+
+### 3. 手动测试VR命令
+
+**终端1** - 启动VR控制程序：
+```bash
+cd /home/robot/openarm_teleop/build
+./vr_control_example
+```
+
+**终端2** - 发送测试命令：
+```bash
+# 测试关节控制
+ros2 topic pub /robot/joint_command sensor_msgs/msg/JointState '{
+  position: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+}' --once
+
+# 测试末端位姿控制
+ros2 topic pub /robot/ee_pose_command geometry_msgs/msg/PoseStamped '{
+  pose: {
+    position: {x: 0.3, y: 0.2, z: 0.4},
+    orientation: {w: 1.0, x: 0.0, y: 0.0, z: 0.0}
+  }
+}' --once
+
+# 测试夹爪控制
+ros2 topic pub /robot/gripper_command std_msgs/msg/Float64MultiArray '{
+  data: [0.5]
+}' --once
+```
+
+**终端3** - 监控机器人状态：
+```bash
+# 查看关节状态
+ros2 topic echo /robot/joint_states
+
+# 查看末端位姿
+ros2 topic echo /robot/ee_pose
+```
+
+---
+
+## 📊 ROS2话题总览
+
+| 话题名称 | 消息类型 | 方向 | 频率 | 功能 |
+|---------|---------|------|------|------|
+| `/robot/joint_command` | `sensor_msgs/JointState` | VR → 机器人 | 按需 | 关节控制 |
+| `/robot/ee_pose_command` | `geometry_msgs/PoseStamped` | VR → 机器人 | 按需 | 末端位姿控制（自动IK） |
+| `/robot/gripper_command` | `std_msgs/Float64MultiArray` | VR → 机器人 | 按需 | 夹爪控制 |
+| `/robot/joint_states` | `sensor_msgs/JointState` | 机器人 → VR | 50Hz | 关节状态反馈 |
+| `/robot/ee_pose` | `geometry_msgs/PoseStamped` | 机器人 → VR | 50Hz | 末端位姿反馈 |
+
+---
+
+## 🤝 Traditional Teleop Mode
+
+For traditional leader-follower teleop:
+
+```bash
+cd /home/robot/openarm_teleop/build
+
+# Unilateral control
+./unilateral_control can0 can1
+
+# Bilateral control
+./bilateral_control can0 can1
+
+# Gravity compensation only
+./gravity_comp can0
+```
+
+---
+
+## 🎭 仿真模式（Simulation Mode）
+
+### 无需硬件，纯软件仿真
+
+**快速启动：**
+```bash
+./test_simulation.sh
+```
+
+**完整系统（tmux多窗口）：**
+```bash
+./launch_simulation.sh  # 选择模式1
+```
+
+**特点：**
+- ✅ 无需CAN接口和真实机器人
+- ✅ 使用KDL进行运动学计算
+- ✅ **使用真实的OpenArm v10 URDF模型**
+- ✅ 支持键盘鼠标控制
+- ✅ ROS2话题完全兼容
+- ✅ 适合算法测试和UI开发
+
+**详细文档：** [SIMULATION_GUIDE.md](SIMULATION_GUIDE.md)
+
+---
+
+## 📚 Documentation
+
+- 🎭 **[SIMULATION_GUIDE.md](SIMULATION_GUIDE.md)** - 仿真模式使用指南（无需硬件）
+- 📐 **[URDF_SETUP.md](URDF_SETUP.md)** - URDF配置说明（使用真实模型）
+- 🎮 **[KEYBOARD_MOUSE_CONTROL.md](KEYBOARD_MOUSE_CONTROL.md)** - 键盘鼠标控制说明
+- 📖 **[IK_SOLVER_GUIDE.md](IK_SOLVER_GUIDE.md)** - IK求解器详细文档
+- 📝 **[IK_QUICK_REFERENCE.md](IK_QUICK_REFERENCE.md)** - IK快速参考
+- 🎮 **[VR_CONTROL_INTERFACE.md](VR_CONTROL_INTERFACE.md)** - VR控制接口说明
+- 📊 **[IK_IMPLEMENTATION_SUMMARY.md](IK_IMPLEMENTATION_SUMMARY.md)** - 实现总结
+- 🌐 **[Official Docs](https://docs.openarm.dev/teleop/)** - OpenArm官方文档
+
+---
+
+## 🔧 Troubleshooting
+
+### IK求解失败？
+1. 检查目标位置是否在工作空间内（通常 <0.6m）
+2. 确认URDF文件已正确生成
+3. 查看详细日志：`./vr_control_example` 会输出IK求解状态
+
+### ROS2话题无法发布？
+```bash
+# 检查ROS2环境
+source /opt/ros/humble/setup.bash
+
+# 检查话题列表
+ros2 topic list
+
+# 检查话题信息
+ros2 topic info /robot/joint_command
+```
+
+### CAN总线错误？
+```bash
+# 检查CAN接口状态
+ip link show can0
+ip link show can1
+
+# 重新配置CAN总线（参考上方CAN Bus Setup）
+```
+
+---
+
+## 📬 Contact & Community
+
+- 📚 Read the [documentation](https://docs.openarm.dev/teleop/)
+- 💬 Join the community on [Discord](https://discord.gg/FsZaZ4z3We)
+- 📬 Contact us through <openarm@enactic.ai>
+
+---
+
+## ⚖️ License
+
+Licensed under the Apache License 2.0. See [LICENSE.txt](LICENSE.txt) for details.
+
+Copyright 2025 Enactic, Inc.
+
+## 🤝 Code of Conduct
+
+All participation in the OpenArm project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md).

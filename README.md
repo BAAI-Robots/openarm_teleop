@@ -1,404 +1,150 @@
-# OpenArm Teleop
+# OpenArm Teleoperation - KDL仿真系统
 
-OpenArm supports multiple control modes:
-- 🤝 1:1 teleoperation from a leader arm to a follower arm
-- 🎮 **VR control with ROS2 integration** (NEW!)
-- 🧠 Inverse kinematics (IK) for end-effector pose control
+OpenArm双臂机器人的键盘鼠标控制仿真系统，基于KDL运动学库。
 
-See the [documentation](https://docs.openarm.dev/teleop/) for traditional teleop details.
-
----
-
-## 🚀 Quick Start
-
-### CAN Bus Setup
-
-First, configure the CAN interface:
-
-```bash
-sudo ip link set can0 down
-sudo ip link set can0 type can bitrate 1000000
-sudo ip link set can0 up
-
-sudo ip link set can1 down
-sudo ip link set can1 type can bitrate 1000000
-sudo ip link set can1 up
-```
-
-### Build the Project
+## 🚀 快速启动
 
 ```bash
 cd /home/robot/openarm_teleop
-mkdir -p build && cd build
-
-# Source ROS2 environment
-source /opt/ros/humble/setup.bash
-
-# Configure and build
-cmake ..
-make
-
-# Verify executables
-ls -lh vr_control_example ik_test
+./start_complete_system.sh
 ```
+
+**启动后会自动打开**：
+- ROS2仿真节点（7-DOF运动学）
+- Robot State Publisher（TF树）
+- RViz可视化
+- 键盘鼠标控制界面
+
+## 🎮 控制方式
+
+### 键盘
+- **W/S**: 前进/后退
+- **A/D**: 左移/右移
+- **Shift/Space**: 下降/上升
+- **Q/E**: 左滚/右滚
+- **R**: 重置到初始位置
+
+### 鼠标
+1. **点击Pygame窗口** → 锁定鼠标（显示🔒）
+2. **移动鼠标** → 控制Pitch/Yaw旋转
+3. **按ESC** → 释放鼠标（显示🖱️）
+
+## 📊 系统架构
+
+```
+simulation_node.py (ROS2节点)
+├── 7-DOF运动学 (KDL IK/FK)
+├── 发布 /robot/joint_states (14关节: 左臂7 + 右臂7)
+├── 订阅 /robot/ee_pose_command
+└── 只控制右臂，左臂固定显示
+
+keyboard_mouse_control.py (控制界面)
+├── Pygame GUI (60 FPS)
+├── 键盘鼠标输入
+└── 发布目标位姿到 /robot/ee_pose_command
+
+robot_state_publisher
+└── 生成TF树用于RViz显示
+
+RViz
+└── 3D可视化机械臂模型
+```
+
+## 📁 核心文件
+
+### Python脚本
+- `simulation_node.py` - 主仿真节点（7-DOF IK/FK）
+- `keyboard_mouse_control.py` - 键鼠控制界面
+- `debug_joints.py` - 关节状态调试工具
+- `test_7dof_ik.py` - IK求解器测试
+
+### 启动脚本
+- `start_complete_system.sh` - 一键启动完整系统
+
+### 配置文件
+- `config/openarm_v10_follower_no_hand.urdf` - 双臂机器人URDF
+- `config/simulation.rviz` - RViz配置
+
+### 文档
+- `HOW_TO_START_SIMULATION.md` - 详细启动和使用指南
+- `KINEMATICS_7DOF.md` - 7自由度运动学说明
+- `KEYBOARD_MOUSE_CONTROL.md` - 控制界面使用说明
+- `ROS2_INTEGRATION.md` - ROS2集成技术细节
+- `TROUBLESHOOTING.md` - 常见问题排查
+
+## ⚙️ 技术参数
+
+| 参数 | 值 |
+|------|-----|
+| 自由度 | 7-DOF（右臂）|
+| IK求解器 | KDL LMA |
+| IK成功率 | 80-90% |
+| 发布频率 | 50 Hz |
+| UI帧率 | 60 FPS |
+| 控制延迟 | <20ms |
+
+## 🔧 依赖要求
+
+### 系统依赖
+- ROS2 Humble
+- Python 3.10
+
+### Python包
+```bash
+pip3 install pygame numpy
+sudo apt install ros-humble-kdl-parser python3-pykdl
+```
+
+### ROS2包
+- openarm_description
+- openarm_bimanual_moveit_config
+
+## 🐛 常见问题
+
+### Q: 机器人模型显示不正确？
+**A**: 确保已source ROS2工作空间：
+```bash
+source ~/ros2_ws/install/setup.bash
+./start_complete_system.sh
+```
+
+### Q: IK求解失败？
+**A**: 正常情况。7-DOF冗余机械臂的IK成功率为80-90%。失败时机械臂不会移动，尝试其他目标位置即可。
+
+### Q: 键盘没反应？
+**A**: 
+1. 确保Pygame窗口已激活（点击窗口）
+2. 检查终端是否有错误信息
+3. 重启系统：Ctrl+C后重新运行
+
+### Q: 鼠标控制无效？
+**A**: 需要先点击Pygame窗口锁定鼠标（显示🔒图标），按ESC释放。
+
+## 📚 详细文档
+
+- [完整启动指南](HOW_TO_START_SIMULATION.md)
+- [7-DOF运动学详解](KINEMATICS_7DOF.md)
+- [控制界面说明](KEYBOARD_MOUSE_CONTROL.md)
+- [故障排查](TROUBLESHOOTING.md)
+
+## 🤝 贡献
+
+参见 [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## 📄 许可证
+
+参见 [LICENSE.txt](LICENSE.txt)
+
+## 🎯 项目特点
+
+✅ **即开即用** - 一条命令启动完整系统  
+✅ **实时响应** - 低延迟键鼠控制  
+✅ **可视化** - RViz实时显示机器人状态  
+✅ **双臂支持** - 完整的双臂模型（控制右臂）  
+✅ **7-DOF** - 完整的7自由度运动学  
+✅ **纯Python** - 易于修改和扩展  
 
 ---
 
-## 🎮 VR Control Mode (ROS2)
-
-### 1. Generate URDF Files
-
-Before starting VR control, generate the robot URDF:
-
-```bash
-mkdir -p /tmp/openarm_urdf_gen
-xacro ~/ros2_ws/src/openarm_description/urdf/robot/v10.urdf.xacro \
-      bimanual:=true \
-      -o /tmp/openarm_urdf_gen/v10_leader.urdf
-```
-
-### 2. Start the VR Control Program
-
-**On the robot side:**
-
-```bash
-cd /home/robot/openarm_teleop/build
-
-# Option 1: Using default parameters (can0, right_arm)
-./vr_control_example
-
-# Option 2: Specify parameters
-./vr_control_example can0 /tmp/openarm_urdf_gen/v10_leader.urdf right_arm
-```
-
-**What it does:**
-- ✅ Initializes OpenArm hardware (CAN interface)
-- ✅ Initializes IK solver for end-effector control
-- ✅ Starts 500Hz control loop
-- ✅ Publishes robot state at 50Hz to ROS2 topics
-- ✅ Listens for VR commands on ROS2 topics
-
-**Expected output:**
-```
-=== OpenArm VR Control Example ===
-CAN Interface: can0
-[INFO] Initializing IK solver...
-[IKSolver] Using KDL LMA solver
-[Dynamics] IK Solver initialized successfully
-[INFO] Initializing OpenArm hardware...
-Arm motors: 6
-Hand motors: 1
-[INFO] Initializing ROS2 Publisher...
-[INFO] Initializing VR Control Interface...
-[VR Control] Thread started
-
-=== VR Control Active ===
-Waiting for VR commands on topics:
-  - /robot/joint_command
-  - /robot/ee_pose_command
-  - /robot/gripper_command
-
-Publishing robot state on:
-  - /robot/joint_states
-  - /robot/ee_pose
-
-Press Ctrl+C to exit...
-```
-
----
-
-## 📡 VR端 ROS2 话题接口
-
-### VR端需要发布的话题（控制机器人）
-
-#### 1. 关节控制（直接控制）
-
-```bash
-# Topic: /robot/joint_command
-# Type: sensor_msgs/msg/JointState
-# Description: 直接设置关节角度
-
-ros2 topic pub /robot/joint_command sensor_msgs/msg/JointState '{
-  position: [0.0, 0.5, -0.3, 0.2, 0.1, -0.4, 0.0]
-}' --once
-```
-
-**Python示例：**
-```python
-import rclpy
-from sensor_msgs.msg import JointState
-
-# 创建发布器
-joint_pub = node.create_publisher(JointState, '/robot/joint_command', 10)
-
-# 发布关节命令
-msg = JointState()
-msg.position = [0.0, 0.5, -0.3, 0.2, 0.1, -0.4, 0.0]  # 6个手臂关节 + 1个夹爪
-joint_pub.publish(msg)
-```
-
-#### 2. 末端位姿控制（自动IK求解）✨
-
-```bash
-# Topic: /robot/ee_pose_command
-# Type: geometry_msgs/msg/PoseStamped
-# Description: 设置末端执行器位姿，系统自动求解IK
-
-ros2 topic pub /robot/ee_pose_command geometry_msgs/msg/PoseStamped '{
-  header: {frame_id: "world"},
-  pose: {
-    position: {x: 0.3, y: 0.2, z: 0.5},
-    orientation: {w: 1.0, x: 0.0, y: 0.0, z: 0.0}
-  }
-}' --once
-```
-
-**Python示例：**
-```python
-from geometry_msgs.msg import PoseStamped
-
-# 创建发布器
-pose_pub = node.create_publisher(PoseStamped, '/robot/ee_pose_command', 10)
-
-# 发布末端位姿命令
-msg = PoseStamped()
-msg.header.frame_id = 'world'
-msg.pose.position.x = 0.3
-msg.pose.position.y = 0.2
-msg.pose.position.z = 0.5
-msg.pose.orientation.w = 1.0  # 单位四元数
-pose_pub.publish(msg)
-
-# IK求解自动执行，无需VR端计算
-```
-
-#### 3. 夹爪控制
-
-```bash
-# Topic: /robot/gripper_command
-# Type: std_msgs/msg/Float64MultiArray
-# Description: 设置夹爪开合度
-
-ros2 topic pub /robot/gripper_command std_msgs/msg/Float64MultiArray '{
-  data: [0.5]
-}' --once
-```
-
-**Python示例：**
-```python
-from std_msgs.msg import Float64MultiArray
-
-gripper_pub = node.create_publisher(Float64MultiArray, '/robot/gripper_command', 10)
-
-msg = Float64MultiArray()
-msg.data = [0.5]  # 0.0 = 完全闭合, 1.0 = 完全打开
-gripper_pub.publish(msg)
-```
-
----
-
-### VR端需要订阅的话题（获取机器人状态）
-
-#### 1. 关节状态反馈
-
-```bash
-# Topic: /robot/joint_states
-# Type: sensor_msgs/msg/JointState
-# Frequency: 50Hz
-
-ros2 topic echo /robot/joint_states
-```
-
-**Python示例：**
-```python
-from sensor_msgs.msg import JointState
-
-def joint_state_callback(msg):
-    print(f"Received {len(msg.position)} joint positions:")
-    for i, pos in enumerate(msg.position):
-        print(f"  Joint {i}: {pos:.3f} rad")
-
-joint_sub = node.create_subscription(
-    JointState, '/robot/joint_states', joint_state_callback, 10)
-```
-
-#### 2. 末端位姿反馈
-
-```bash
-# Topic: /robot/ee_pose
-# Type: geometry_msgs/msg/PoseStamped
-# Frequency: 50Hz
-
-ros2 topic echo /robot/ee_pose
-```
-
-**Python示例：**
-```python
-from geometry_msgs.msg import PoseStamped
-
-def ee_pose_callback(msg):
-    pos = msg.pose.position
-    ori = msg.pose.orientation
-    print(f"End-effector pose:")
-    print(f"  Position: [{pos.x:.3f}, {pos.y:.3f}, {pos.z:.3f}]")
-    print(f"  Orientation: [{ori.w:.3f}, {ori.x:.3f}, {ori.y:.3f}, {ori.z:.3f}]")
-
-ee_sub = node.create_subscription(
-    PoseStamped, '/robot/ee_pose', ee_pose_callback, 10)
-```
-
----
-
-## 🧪 测试VR接口
-
-### 1. 测试IK求解器
-
-```bash
-cd /home/robot/openarm_teleop/build
-./ik_test
-```
-
-**预期输出：**
-```
-[✓] Test Case 1: Zero Configuration
-    Position error: 0.0000 m
-[✓] Test Case 2: Random Configuration
-    Position error: 0.0000 m
-```
-
-### 2. 自动化测试脚本
-
-```bash
-cd /home/robot/openarm_teleop
-chmod +x test_vr_interface.sh
-./test_vr_interface.sh
-```
-
-### 3. 手动测试VR命令
-
-**终端1** - 启动VR控制程序：
-```bash
-cd /home/robot/openarm_teleop/build
-./vr_control_example
-```
-
-**终端2** - 发送测试命令：
-```bash
-# 测试关节控制
-ros2 topic pub /robot/joint_command sensor_msgs/msg/JointState '{
-  position: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-}' --once
-
-# 测试末端位姿控制
-ros2 topic pub /robot/ee_pose_command geometry_msgs/msg/PoseStamped '{
-  pose: {
-    position: {x: 0.3, y: 0.2, z: 0.4},
-    orientation: {w: 1.0, x: 0.0, y: 0.0, z: 0.0}
-  }
-}' --once
-
-# 测试夹爪控制
-ros2 topic pub /robot/gripper_command std_msgs/msg/Float64MultiArray '{
-  data: [0.5]
-}' --once
-```
-
-**终端3** - 监控机器人状态：
-```bash
-# 查看关节状态
-ros2 topic echo /robot/joint_states
-
-# 查看末端位姿
-ros2 topic echo /robot/ee_pose
-```
-
----
-
-## 📊 ROS2话题总览
-
-| 话题名称 | 消息类型 | 方向 | 频率 | 功能 |
-|---------|---------|------|------|------|
-| `/robot/joint_command` | `sensor_msgs/JointState` | VR → 机器人 | 按需 | 关节控制 |
-| `/robot/ee_pose_command` | `geometry_msgs/PoseStamped` | VR → 机器人 | 按需 | 末端位姿控制（自动IK） |
-| `/robot/gripper_command` | `std_msgs/Float64MultiArray` | VR → 机器人 | 按需 | 夹爪控制 |
-| `/robot/joint_states` | `sensor_msgs/JointState` | 机器人 → VR | 50Hz | 关节状态反馈 |
-| `/robot/ee_pose` | `geometry_msgs/PoseStamped` | 机器人 → VR | 50Hz | 末端位姿反馈 |
-
----
-
-## 🤝 Traditional Teleop Mode
-
-For traditional leader-follower teleop:
-
-```bash
-cd /home/robot/openarm_teleop/build
-
-# Unilateral control
-./unilateral_control can0 can1
-
-# Bilateral control
-./bilateral_control can0 can1
-
-# Gravity compensation only
-./gravity_comp can0
-```
-
----
-
-## 📚 Documentation
-
-- 📖 **[IK_SOLVER_GUIDE.md](IK_SOLVER_GUIDE.md)** - IK求解器详细文档
-- 📝 **[IK_QUICK_REFERENCE.md](IK_QUICK_REFERENCE.md)** - IK快速参考
-- 🎮 **[VR_CONTROL_INTERFACE.md](VR_CONTROL_INTERFACE.md)** - VR控制接口说明
-- 📊 **[IK_IMPLEMENTATION_SUMMARY.md](IK_IMPLEMENTATION_SUMMARY.md)** - 实现总结
-- 🌐 **[Official Docs](https://docs.openarm.dev/teleop/)** - OpenArm官方文档
-
----
-
-## 🔧 Troubleshooting
-
-### IK求解失败？
-1. 检查目标位置是否在工作空间内（通常 <0.6m）
-2. 确认URDF文件已正确生成
-3. 查看详细日志：`./vr_control_example` 会输出IK求解状态
-
-### ROS2话题无法发布？
-```bash
-# 检查ROS2环境
-source /opt/ros/humble/setup.bash
-
-# 检查话题列表
-ros2 topic list
-
-# 检查话题信息
-ros2 topic info /robot/joint_command
-```
-
-### CAN总线错误？
-```bash
-# 检查CAN接口状态
-ip link show can0
-ip link show can1
-
-# 重新配置CAN总线（参考上方CAN Bus Setup）
-```
-
----
-
-## 📬 Contact & Community
-
-- 📚 Read the [documentation](https://docs.openarm.dev/teleop/)
-- 💬 Join the community on [Discord](https://discord.gg/FsZaZ4z3We)
-- 📬 Contact us through <openarm@enactic.ai>
-
----
-
-## ⚖️ License
-
-Licensed under the Apache License 2.0. See [LICENSE.txt](LICENSE.txt) for details.
-
-Copyright 2025 Enactic, Inc.
-
-## 🤝 Code of Conduct
-
-All participation in the OpenArm project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md).
+**版本**: 1.0  
+**更新日期**: 2026-01-09
