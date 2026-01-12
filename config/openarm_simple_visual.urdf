@@ -1,0 +1,313 @@
+<?xml version="1.0"?>
+<robot name="openarm_simple">
+  
+  <link name="world"/>
+  
+  <!-- Body -->
+  <joint name="openarm_body_world_joint" type="fixed">
+    <parent link="world"/>
+    <child link="openarm_body_link0"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+  </joint>
+  
+  <link name="openarm_body_link0">
+    <visual>
+      <origin xyz="0 0 0.35" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.15 0.15 0.7"/>
+      </geometry>
+      <material name="body_color">
+        <color rgba="0.5 0.5 0.5 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+  <!-- LEFT ARM -->
+  <joint name="openarm_left_openarm_body_link0_joint" type="fixed">
+    <parent link="openarm_body_link0"/>
+    <child link="openarm_left_link0"/>
+    <origin rpy="-1.5708 0 0" xyz="0.0 0.031 0.698"/>
+  </joint>
+  
+  <link name="openarm_left_link0">
+    <visual>
+      <geometry>
+        <cylinder length="0.06" radius="0.035"/>
+      </geometry>
+      <material name="left_color">
+        <color rgba="0.2 0.6 0.8 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint1" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 0.0 0.0625"/>
+    <parent link="openarm_left_link0"/>
+    <child link="openarm_left_link1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="40" lower="-3.490659" upper="1.396263" velocity="16.754666"/>
+  </joint>
+  
+  <link name="openarm_left_link1">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.06" radius="0.03"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint2" type="revolute">
+    <origin rpy="-1.57079632679 0 0" xyz="-0.0301 0.0 0.06"/>
+    <parent link="openarm_left_link1"/>
+    <child link="openarm_left_link2"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="40" lower="-3.316125" upper="0.174533" velocity="16.754666"/>
+  </joint>
+  
+  <link name="openarm_left_link2">
+    <visual>
+      <origin xyz="0.015 0 0.033" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.025 0.066"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint3" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0301 0.0 0.06625"/>
+    <parent link="openarm_left_link2"/>
+    <child link="openarm_left_link3"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="27" lower="-1.570796" upper="1.570796" velocity="5.445426"/>
+  </joint>
+  
+  <link name="openarm_left_link3">
+    <visual>
+      <origin xyz="0 0 0.077" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.154" radius="0.025"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint4" type="revolute">
+    <origin rpy="0 0 0" xyz="-0.0 0.0315 0.15375"/>
+    <parent link="openarm_left_link3"/>
+    <child link="openarm_left_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="27" lower="0.0" upper="2.443461" velocity="5.445426"/>
+  </joint>
+  
+  <link name="openarm_left_link4">
+    <visual>
+      <origin xyz="0 -0.015 0.048" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.025 0.04 0.095"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint5" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 -0.0315 0.0955"/>
+    <parent link="openarm_left_link4"/>
+    <child link="openarm_left_link5"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_left_link5">
+    <visual>
+      <origin xyz="0 0 0.06" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.12" radius="0.022"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint6" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0375 0.0 0.1205"/>
+    <parent link="openarm_left_link5"/>
+    <child link="openarm_left_link6"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="7" lower="-0.785398" upper="0.785398" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_left_link6">
+    <visual>
+      <origin xyz="-0.019 0 0" rpy="0 1.57 0"/>
+      <geometry>
+        <cylinder length="0.037" radius="0.018"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_left_joint7" type="revolute">
+    <origin rpy="0 0 0" xyz="-0.0375 0.0 0.0"/>
+    <parent link="openarm_left_link6"/>
+    <child link="openarm_left_link7"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_left_link7">
+    <visual>
+      <origin xyz="0 0 0.04" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.08" radius="0.015"/>
+      </geometry>
+      <material name="left_color"/>
+    </visual>
+  </link>
+  
+  <!-- RIGHT ARM -->
+  <joint name="openarm_right_openarm_body_link0_joint" type="fixed">
+    <parent link="openarm_body_link0"/>
+    <child link="openarm_right_link0"/>
+    <origin rpy="1.5708 0 0" xyz="0.0 -0.031 0.698"/>
+  </joint>
+  
+  <link name="openarm_right_link0">
+    <visual>
+      <geometry>
+        <cylinder length="0.06" radius="0.035"/>
+      </geometry>
+      <material name="right_color">
+        <color rgba="0.8 0.4 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint1" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 0.0 0.0625"/>
+    <parent link="openarm_right_link0"/>
+    <child link="openarm_right_link1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="40" lower="-1.396263" upper="3.490659" velocity="16.754666"/>
+  </joint>
+  
+  <link name="openarm_right_link1">
+    <visual>
+      <origin xyz="0 0 0.03" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.06" radius="0.03"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint2" type="revolute">
+    <origin rpy="1.57079632679 0 0" xyz="-0.0301 0.0 0.06"/>
+    <parent link="openarm_right_link1"/>
+    <child link="openarm_right_link2"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="40" lower="-0.174533" upper="3.316125" velocity="16.754666"/>
+  </joint>
+  
+  <link name="openarm_right_link2">
+    <visual>
+      <origin xyz="0.015 0 0.033" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.04 0.025 0.066"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint3" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0301 0.0 0.06625"/>
+    <parent link="openarm_right_link2"/>
+    <child link="openarm_right_link3"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="27" lower="-1.570796" upper="1.570796" velocity="5.445426"/>
+  </joint>
+  
+  <link name="openarm_right_link3">
+    <visual>
+      <origin xyz="0 0 0.077" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.154" radius="0.025"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint4" type="revolute">
+    <origin rpy="0 0 0" xyz="-0.0 0.0315 0.15375"/>
+    <parent link="openarm_right_link3"/>
+    <child link="openarm_right_link4"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="27" lower="0.0" upper="2.443461" velocity="5.445426"/>
+  </joint>
+  
+  <link name="openarm_right_link4">
+    <visual>
+      <origin xyz="0 -0.015 0.048" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.025 0.04 0.095"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint5" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0 -0.0315 0.0955"/>
+    <parent link="openarm_right_link4"/>
+    <child link="openarm_right_link5"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_right_link5">
+    <visual>
+      <origin xyz="0 0 0.06" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.12" radius="0.022"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint6" type="revolute">
+    <origin rpy="0 0 0" xyz="0.0375 0.0 0.1205"/>
+    <parent link="openarm_right_link5"/>
+    <child link="openarm_right_link6"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="7" lower="-0.785398" upper="0.785398" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_right_link6">
+    <visual>
+      <origin xyz="-0.019 0 0" rpy="0 1.57 0"/>
+      <geometry>
+        <cylinder length="0.037" radius="0.018"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+  <joint name="openarm_right_joint7" type="revolute">
+    <origin rpy="0 0 0" xyz="-0.0375 0.0 0.0"/>
+    <parent link="openarm_right_link6"/>
+    <child link="openarm_right_link7"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="7" lower="-1.570796" upper="1.570796" velocity="20.943946"/>
+  </joint>
+  
+  <link name="openarm_right_link7">
+    <visual>
+      <origin xyz="0 0 0.04" rpy="0 0 0"/>
+      <geometry>
+        <cylinder length="0.08" radius="0.015"/>
+      </geometry>
+      <material name="right_color"/>
+    </visual>
+  </link>
+  
+</robot>
